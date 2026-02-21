@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lease Portfolio Model</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--navy:#1a2332;--dark:#2c3e50;--blue:#3498db;--green:#27ae60;--red:#e74c3c;--yellow:#f39c12;--light:#ecf0f1;--white:#fff;--border:#ddd;--input-blue:#2471a3;--bg:#f5f7fa}
+body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:var(--bg);color:#333;font-size:14px}
+header{background:var(--navy);color:var(--white);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+header h1{font-size:20px;font-weight:600;letter-spacing:.5px}
+.header-actions{display:flex;gap:8px}
+.header-actions button{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:var(--white);padding:6px 14px;border-radius:4px;cursor:pointer;font-size:12px;transition:.2s}
+.header-actions button:hover{background:rgba(255,255,255,.25)}
+.tabs{display:flex;background:var(--dark);border-bottom:2px solid var(--navy);overflow-x:auto}
+.tab{padding:10px 20px;color:rgba(255,255,255,.7);cursor:pointer;border:none;background:none;font-size:13px;white-space:nowrap;border-bottom:3px solid transparent;transition:.2s}
+.tab:hover{color:var(--white);background:rgba(255,255,255,.05)}
+.tab.active{color:var(--white);border-bottom-color:var(--blue);background:rgba(255,255,255,.1)}
+.tab-content{display:none;padding:20px;max-width:1400px;margin:0 auto}
+.tab-content.active{display:block}
+.section{background:var(--white);border-radius:8px;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.section h2{font-size:16px;color:var(--navy);margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--light)}
+.section h3{font-size:14px;color:var(--dark);margin:12px 0 8px}
+.params-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-bottom:16px}
+.param-group{display:flex;flex-direction:column;gap:4px}
+.param-group label{font-size:12px;font-weight:600;color:#555}
+.param-group input,.param-group select{padding:8px;border:1px solid var(--border);border-radius:4px;font-size:14px}
+input.user-input{color:var(--input-blue);font-weight:600;border-color:var(--input-blue);background:#f0f8ff}
+.key-control{background:#fff9e6!important;border-color:var(--yellow)!important}
+.table-wrap{overflow-x:auto;max-height:600px;overflow-y:auto;border:1px solid var(--border);border-radius:4px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{position:sticky;top:0;z-index:10}
+th{background:var(--navy);color:var(--white);padding:8px 10px;text-align:right;font-weight:600;font-size:12px;white-space:nowrap}
+th:first-child{text-align:left}
+td{padding:6px 10px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap}
+td:first-child{text-align:left;font-weight:500}
+tr:hover{background:#f8f9fa}
+tr.actual-row{background:#e8f5e9}
+tr.projected-row{background:var(--white)}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.badge-actual{background:#e8f5e9;color:var(--green)}
+.badge-projected{background:#e3f2fd;color:var(--blue)}
+.badge-alert{background:#fce4ec;color:var(--red)}
+.badge-ok{background:#e8f5e9;color:var(--green)}
+.var-positive{color:var(--green);font-weight:600}
+.var-negative{color:var(--red);font-weight:600}
+.btn{padding:8px 16px;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:500;transition:.2s}
+.btn-primary{background:var(--blue);color:var(--white)}
+.btn-primary:hover{background:#2980b9}
+.btn-success{background:var(--green);color:var(--white)}
+.btn-success:hover{background:#219a52}
+.btn-danger{background:var(--red);color:var(--white)}
+.btn-danger:hover{background:#c0392b}
+.btn-secondary{background:#95a5a6;color:var(--white)}
+.btn-secondary:hover{background:#7f8c8d}
+.btn-row{display:flex;gap:8px;margin:12px 0;flex-wrap:wrap}
+.summary-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin:16px 0}
+.summary-card{background:linear-gradient(135deg,var(--navy),var(--dark));color:var(--white);padding:16px;border-radius:8px;text-align:center}
+.summary-card .value{font-size:22px;font-weight:700;margin-top:4px}
+.summary-card .label{font-size:11px;opacity:.8;text-transform:uppercase;letter-spacing:.5px}
+.chart-container{height:300px;background:var(--white);border-radius:8px;padding:16px;margin:16px 0;position:relative}
+canvas{width:100%!important;height:100%!important}
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--white);border-radius:8px;padding:24px;width:90%;max-width:500px;box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.modal h3{margin-bottom:16px;color:var(--navy)}
+.modal .form-row{margin-bottom:12px}
+.modal .form-row label{display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:4px}
+.modal .form-row input{width:100%;padding:8px;border:1px solid var(--border);border-radius:4px}
+.modal .btn-row{justify-content:flex-end;margin-top:16px}
+.instructions-content{line-height:1.7}
+.instructions-content h3{color:var(--navy);margin:16px 0 8px;font-size:15px}
+.instructions-content p{margin-bottom:8px}
+.instructions-content ul{margin:8px 0 8px 24px}
+.instructions-content .color-legend{display:flex;flex-wrap:wrap;gap:12px;margin:12px 0}
+.instructions-content .color-item{display:flex;align-items:center;gap:6px;font-size:13px}
+.color-swatch{width:20px;height:20px;border-radius:3px;border:1px solid #ccc}
+.loan-expand{cursor:pointer;user-select:none}
+.loan-expand:hover{color:var(--blue)}
+.expand-detail{display:none}
+.expand-detail.open{display:table-row}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+.npl-input{width:80px;text-align:right}
+.actual-input{width:120px;text-align:right}
+.notes-input{width:200px}
+.status-bar{background:var(--navy);color:rgba(255,255,255,.7);padding:6px 24px;font-size:11px;display:flex;justify-content:space-between;position:fixed;bottom:0;width:100%;z-index:100}
+@media print{header,.tabs,.status-bar,.btn-row,.header-actions{display:none!important}.tab-content{display:block!important;padding:10px}.section{break-inside:avoid;box-shadow:none;border:1px solid #ccc}}
+</style>
+</head>
+<body>
+<header>
+<h1>LEASE PORTFOLIO MODEL</h1>
+<div class="header-actions">
+<button onclick="exportAllCSV()">Export All CSV</button>
+<button onclick="resetToDefaults()">Reset to Defaults</button>
+<button onclick="window.print()">Print</button>
+</div>
+</header>
+
+<div class="tabs" id="tabs">
+<button class="tab active" data-tab="instructions">Instructions</button>
+<button class="tab" data-tab="tape">Portfolio Tape</button>
+<button class="tab" data-tab="npl">NPL Curve</button>
+<button class="tab" data-tab="schedules">Loan Schedules</button>
+<button class="tab" data-tab="actuals">Actuals</button>
+<button class="tab" data-tab="rollup">Portfolio Roll-Up</button>
+<button class="tab" data-tab="variance">Variance Analysis</button>
+</div>
+
+<!-- INSTRUCTIONS TAB -->
+<div class="tab-content active" id="tab-instructions">
+<div class="section instructions-content">
+<h2>LEASE PORTFOLIO MODEL &mdash; USER GUIDE</h2>
+<h3>Model Overview</h3>
+<p>This application models a lease portfolio with staggered origination, projected cash flows, NPL defaults, recoveries, and a framework for tracking actual vs. projected performance. All projections are driven by the Portfolio Tape and can be overridden with actual data monthly.</p>
+
+<h3>Tab Guide</h3>
+<ul>
+<li><strong>Portfolio Tape</strong> &mdash; Master loan-level data. Add, edit, or remove loans. Global parameters (rate, recovery rate, recovery lag) are set here.</li>
+<li><strong>NPL Curve</strong> &mdash; Monthly default rate by loan age. Edit to shape your expected default curve.</li>
+<li><strong>Loan Schedules</strong> &mdash; Auto-calculated amortization, NPL, and recovery projections per loan. Read-only.</li>
+<li><strong>Actuals</strong> &mdash; Enter monthly actual performance data. Set "Last Actual Month" to switch the model from projected to actual.</li>
+<li><strong>Portfolio Roll-Up</strong> &mdash; Blended view: actuals for months &le; Last Actual Month, projections after. Includes a chart.</li>
+<li><strong>Variance Analysis</strong> &mdash; Side-by-side projected vs. actual with variance calculations and alerts.</li>
+</ul>
+
+<h3>Monthly Workflow</h3>
+<ol>
+<li><strong>Record Actuals</strong> &mdash; Go to the Actuals tab. Enter Principal, Interest, Defaults, Recoveries, and Performing Balance for the month.</li>
+<li><strong>Update Last Actual Month</strong> &mdash; Set the yellow control to the latest month with actuals.</li>
+<li><strong>Review Portfolio Roll-Up</strong> &mdash; Months with actuals show green "Actual" badges. Future months show projected values.</li>
+<li><strong>Check Variance Analysis</strong> &mdash; Review flagged months. Add commentary explaining material variances.</li>
+<li><strong>Add New Loans</strong> &mdash; Add rows to Portfolio Tape. Schedules auto-recalculate.</li>
+</ol>
+
+<h3>Color Code Legend</h3>
+<div class="color-legend">
+<div class="color-item"><div class="color-swatch" style="background:#f0f8ff;border-color:#2471a3"></div>Blue input &mdash; editable field</div>
+<div class="color-item"><div class="color-swatch" style="background:#fff9e6;border-color:#f39c12"></div>Yellow &mdash; key control cell</div>
+<div class="color-item"><div class="color-swatch" style="background:#e8f5e9"></div>Green &mdash; actual data / positive variance</div>
+<div class="color-item"><div class="color-swatch" style="background:#fce4ec"></div>Red &mdash; alert / negative variance</div>
+</div>
+
+<h3>Data Persistence</h3>
+<p>All data is saved automatically in your browser's local storage. Closing and reopening the page will retain your data. Use "Reset to Defaults" to reload the sample 12-loan portfolio.</p>
+
+<h3>SharePoint Deployment</h3>
+<p>Upload this HTML file to a SharePoint document library. It can be embedded in a SharePoint page using the "Embed" web part or opened directly from the library. No server infrastructure is required.</p>
+</div>
+</div>
+
+<!-- PORTFOLIO TAPE TAB -->
+<div class="tab-content" id="tab-tape">
+<div class="section">
+<h2>Global Parameters</h2>
+<div class="params-grid">
+<div class="param-group"><label>Recovery Rate</label><input type="number" class="user-input" id="globalRecovery" step="0.01" value="0.50" onchange="onGlobalChange()"></div>
+<div class="param-group"><label>Recovery Lag (Months)</label><input type="number" class="user-input" id="globalLag" step="1" value="24" onchange="onGlobalChange()"></div>
+</div>
+</div>
+<div class="section">
+<h2>Portfolio Tape</h2>
+<div class="btn-row">
+<button class="btn btn-primary" onclick="showAddLoan()">+ Add Loan</button>
+<button class="btn btn-secondary" onclick="exportCSV('tape')">Export CSV</button>
+</div>
+<div class="summary-cards" id="tapeSummary"></div>
+<div class="table-wrap"><table id="tapeTable"><thead><tr>
+<th>Loan ID</th><th>Origination Month</th><th>Loan Amount</th><th>Annual Rate</th><th>Term (Mo)</th><th>Monthly Rate</th><th>Monthly Payment</th><th>Status</th><th>Actions</th>
+</tr></thead><tbody id="tapeBody"></tbody></table></div>
+</div>
+</div>
+
+<!-- NPL CURVE TAB -->
+<div class="tab-content" id="tab-npl">
+<div class="section">
+<h2>NPL Curve by Loan Age</h2>
+<p style="margin-bottom:12px;color:#666">Enter the monthly default rate (% of performing balance) for each loan age period.</p>
+<div class="btn-row">
+<button class="btn btn-secondary" onclick="setFlatNPL()">Set Flat Rate</button>
+<button class="btn btn-secondary" onclick="exportCSV('npl')">Export CSV</button>
+</div>
+<div class="table-wrap" style="max-height:500px">
+<table><thead><tr><th>Loan Age</th><th>Monthly NPL Rate</th><th>Cumulative Default %</th></tr></thead>
+<tbody id="nplBody"></tbody></table>
+</div>
+</div>
+</div>
+
+<!-- LOAN SCHEDULES TAB -->
+<div class="tab-content" id="tab-schedules">
+<div class="section">
+<h2>Loan Schedules</h2>
+<p style="margin-bottom:12px;color:#666">Auto-calculated from Portfolio Tape and NPL Curve. Click a loan to expand its full schedule.</p>
+<div class="btn-row"><button class="btn btn-secondary" onclick="exportCSV('schedules')">Export CSV</button></div>
+<div id="schedulesContainer"></div>
+</div>
+</div>
+
+<!-- ACTUALS TAB -->
+<div class="tab-content" id="tab-actuals">
+<div class="section">
+<h2>Monthly Actuals</h2>
+<div class="params-grid">
+<div class="param-group"><label>Last Actual Month (Key Control)</label>
+<input type="number" class="user-input key-control" id="lastActualMonth" min="0" max="120" value="0" onchange="onActualsChange()">
+</div>
+</div>
+<div class="btn-row"><button class="btn btn-secondary" onclick="exportCSV('actuals')">Export CSV</button></div>
+<div class="table-wrap" style="max-height:600px">
+<table><thead><tr>
+<th>Month</th><th>Principal Collected</th><th>Interest Collected</th><th>New Defaults</th><th>Recoveries</th><th>Net Cash Flow</th><th>New Origination</th><th>Performing Balance</th><th>Notes</th>
+</tr></thead><tbody id="actualsBody"></tbody></table>
+</div>
+</div>
+</div>
+
+<!-- PORTFOLIO ROLL-UP TAB -->
+<div class="tab-content" id="tab-rollup">
+<div class="section">
+<h2>Portfolio Roll-Up</h2>
+<p style="margin-bottom:8px;color:#666">Last Actual Month: <strong id="rollupLastActual">0</strong></p>
+<div class="btn-row"><button class="btn btn-secondary" onclick="exportCSV('rollup')">Export CSV</button></div>
+<div class="chart-container"><canvas id="rollupChart"></canvas></div>
+<div class="table-wrap" style="max-height:600px">
+<table><thead><tr>
+<th>Month</th><th>Source</th><th>New Origination</th><th>Performing Balance</th><th>Perf Principal</th><th>Perf Interest</th><th>New Defaults</th><th>Recoveries</th><th>Net Cash Flow</th><th>Cumulative Loss</th>
+</tr></thead><tbody id="rollupBody"></tbody></table>
+</div>
+</div>
+</div>
+
+<!-- VARIANCE ANALYSIS TAB -->
+<div class="tab-content" id="tab-variance">
+<div class="section">
+<h2>Variance Analysis: Projected vs Actual</h2>
+<div class="params-grid">
+<div class="param-group"><label>Variance Alert Threshold (%)</label>
+<input type="number" class="user-input key-control" id="varianceThreshold" step="0.01" value="0.10" onchange="renderVariance()">
+</div>
+</div>
+<div class="btn-row"><button class="btn btn-secondary" onclick="exportCSV('variance')">Export CSV</button></div>
+<div class="chart-container"><canvas id="varianceChart"></canvas></div>
+<div class="table-wrap">
+<table><thead><tr>
+<th rowspan="2">Month</th><th rowspan="2">Status</th>
+<th colspan="4" style="text-align:center;border-left:2px solid #4a6fa5">Net Cash Flow</th>
+<th colspan="4" style="text-align:center;border-left:2px solid #4a6fa5">Perf Principal</th>
+<th colspan="4" style="text-align:center;border-left:2px solid #4a6fa5">Perf Interest</th>
+<th colspan="4" style="text-align:center;border-left:2px solid #4a6fa5">New Defaults</th>
+<th colspan="4" style="text-align:center;border-left:2px solid #4a6fa5">Recoveries</th>
+<th rowspan="2">Flag</th><th rowspan="2">Commentary</th>
+</tr><tr>
+<th style="border-left:2px solid #4a6fa5">Proj</th><th>Act</th><th>Var($)</th><th>Var(%)</th>
+<th style="border-left:2px solid #4a6fa5">Proj</th><th>Act</th><th>Var($)</th><th>Var(%)</th>
+<th style="border-left:2px solid #4a6fa5">Proj</th><th>Act</th><th>Var($)</th><th>Var(%)</th>
+<th style="border-left:2px solid #4a6fa5">Proj</th><th>Act</th><th>Var($)</th><th>Var(%)</th>
+<th style="border-left:2px solid #4a6fa5">Proj</th><th>Act</th><th>Var($)</th><th>Var(%)</th>
+</tr></thead><tbody id="varianceBody"></tbody></table>
+</div>
+</div>
+</div>
+
+<!-- ADD/EDIT LOAN MODAL -->
+<div class="modal-overlay" id="loanModal">
+<div class="modal">
+<h3 id="modalTitle">Add New Loan</h3>
+<div class="form-row"><label>Loan ID</label><input type="text" id="modalLoanId" readonly></div>
+<div class="form-row"><label>Origination Month</label><input type="number" class="user-input" id="modalOrigMonth" min="1" max="120" value="1"></div>
+<div class="form-row"><label>Loan Amount ($)</label><input type="number" class="user-input" id="modalAmount" min="0" step="1000" value="1000000"></div>
+<div class="form-row"><label>Annual Rate</label><input type="number" class="user-input" id="modalRate" min="0" step="0.01" value="0.20"></div>
+<div class="form-row"><label>Term (Months)</label><input type="number" class="user-input" id="modalTerm" min="1" max="360" value="60"></div>
+<div class="form-row"><label>Status</label><select id="modalStatus" class="user-input"><option>Active</option><option>Inactive</option></select></div>
+<div class="btn-row">
+<button class="btn btn-secondary" onclick="closeLoanModal()">Cancel</button>
+<button class="btn btn-primary" id="modalSave" onclick="saveLoan()">Save</button>
+</div>
+</div>
+</div>
+
+<div class="status-bar">
+<span id="statusText">Ready</span>
+<span id="statusCalc"></span>
+</div>
+
+<script>
+// ==================== STATE ====================
+let STATE = {
+  globalRecovery: 0.50,
+  globalLag: 24,
+  loans: [],
+  nplCurve: [],
+  actuals: [],
+  lastActualMonth: 0,
+  varianceThreshold: 0.10,
+  varianceCommentary: {},
+  nextLoanNum: 13
+};
+
+// Computed
+let loanSchedules = [];  // array of arrays, one per loan
+let rollupData = [];     // aggregated by portfolio month
+let maxPortfolioMonth = 0;
+
+// ==================== UTILITIES ====================
+function fmt(n) {
+  if (n == null || isNaN(n)) return '-';
+  return n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function fmtCur(n) {
+  if (n == null || isNaN(n)) return '-';
+  return '$' + fmt(n);
+}
+function fmtPct(n) {
+  if (n == null || isNaN(n)) return '-';
+  return (n * 100).toFixed(1) + '%';
+}
+function fmtPct4(n) {
+  if (n == null || isNaN(n)) return '-';
+  return (n * 100).toFixed(3) + '%';
+}
+
+function PMT(rate, nper, pv) {
+  if (rate === 0) return pv / nper;
+  return pv * (rate * Math.pow(1 + rate, nper)) / (Math.pow(1 + rate, nper) - 1);
+}
+
+// ==================== INITIALIZATION ====================
+function getDefaultLoans() {
+  let loans = [];
+  for (let i = 1; i <= 12; i++) {
+    loans.push({
+      id: 'L-' + String(i).padStart(4, '0'),
+      origMonth: i,
+      amount: 1000000,
+      annualRate: 0.20,
+      term: 60,
+      status: 'Active'
+    });
+  }
+  return loans;
+}
+
+function getDefaultNPL() {
+  let curve = [];
+  for (let i = 1; i <= 60; i++) {
+    curve.push({age: i, rate: 0.005});
+  }
+  return curve;
+}
+
+function getDefaultActuals() {
+  let actuals = [];
+  for (let i = 1; i <= 120; i++) {
+    actuals.push({month: i, principal: 0, interest: 0, defaults: 0, recoveries: 0, origination: 0, perfBalance: 0, notes: ''});
+  }
+  return actuals;
+}
+
+function loadState() {
+  try {
+    let saved = localStorage.getItem('leasePortfolioModel');
+    if (saved) {
+      let s = JSON.parse(saved);
+      STATE.globalRecovery = s.globalRecovery != null ? s.globalRecovery : 0.50;
+      STATE.globalLag = s.globalLag != null ? s.globalLag : 24;
+      STATE.loans = s.loans || getDefaultLoans();
+      STATE.nplCurve = s.nplCurve || getDefaultNPL();
+      STATE.actuals = s.actuals || getDefaultActuals();
+      STATE.lastActualMonth = s.lastActualMonth || 0;
+      STATE.varianceThreshold = s.varianceThreshold != null ? s.varianceThreshold : 0.10;
+      STATE.varianceCommentary = s.varianceCommentary || {};
+      STATE.nextLoanNum = s.nextLoanNum || 13;
+      // Ensure actuals array is long enough
+      while (STATE.actuals.length < 120) {
+        STATE.actuals.push({month: STATE.actuals.length + 1, principal: 0, interest: 0, defaults: 0, recoveries: 0, origination: 0, perfBalance: 0, notes: ''});
+      }
+      // Ensure NPL curve is at least 60
+      while (STATE.nplCurve.length < 60) {
+        STATE.nplCurve.push({age: STATE.nplCurve.length + 1, rate: 0.005});
+      }
+      return;
+    }
+  } catch(e) { console.error('Load error', e); }
+  // Default state
+  STATE.loans = getDefaultLoans();
+  STATE.nplCurve = getDefaultNPL();
+  STATE.actuals = getDefaultActuals();
+}
+
+function saveState() {
+  try {
+    localStorage.setItem('leasePortfolioModel', JSON.stringify(STATE));
+  } catch(e) { console.error('Save error', e); }
+}
+
+// ==================== CALCULATION ENGINE ====================
+function recalcAll() {
+  let t0 = performance.now();
+  calcSchedules();
+  calcRollup();
+  let t1 = performance.now();
+  document.getElementById('statusCalc').textContent = 'Calc: ' + (t1-t0).toFixed(0) + 'ms | ' + STATE.loans.length + ' loans';
+  saveState();
+}
+
+function calcSchedules() {
+  loanSchedules = [];
+  maxPortfolioMonth = 0;
+  let recoveryRate = STATE.globalRecovery;
+  let recoveryLag = STATE.globalLag;
+
+  for (let li = 0; li < STATE.loans.length; li++) {
+    let loan = STATE.loans[li];
+    if (loan.status !== 'Active') { loanSchedules.push([]); continue; }
+
+    let monthlyRate = loan.annualRate / 12;
+    let pmt = PMT(monthlyRate, loan.term, loan.amount);
+    let totalPeriods = loan.term + recoveryLag;
+    let schedule = [];
+    let balance = loan.amount;
+    let cumSurvival = 1;
+
+    for (let age = 1; age <= totalPeriods; age++) {
+      let portMonth = loan.origMonth + age - 1;
+      if (portMonth > maxPortfolioMonth) maxPortfolioMonth = portMonth;
+
+      let schedPayment = 0, schedPrincipal = 0, schedInterest = 0;
+      let nplRate = 0, nplAmount = 0, perfBalance = 0, perfPrincipal = 0, perfInterest = 0;
+      let recovery = 0;
+
+      if (age <= loan.term) {
+        schedInterest = balance * monthlyRate;
+        schedPrincipal = pmt - schedInterest;
+        schedPayment = pmt;
+        balance = balance - schedPrincipal;
+        if (balance < 0.01) balance = 0;
+
+        // NPL: defaults apply to remaining balance * previous survival
+        let nplIdx = age - 1;
+        nplRate = (nplIdx < STATE.nplCurve.length) ? STATE.nplCurve[nplIdx].rate : 0;
+        let prevCumSurvival = cumSurvival;
+        cumSurvival = cumSurvival * (1 - nplRate);
+        nplAmount = balance * nplRate * prevCumSurvival;
+        perfBalance = balance * cumSurvival;
+        perfPrincipal = schedPrincipal * cumSurvival;
+        perfInterest = perfBalance * monthlyRate;
+      } else {
+        // Past term: no payments, balance = 0
+        schedPayment = 0; schedPrincipal = 0; schedInterest = 0;
+        balance = 0; nplRate = 0; nplAmount = 0;
+        perfBalance = 0; perfPrincipal = 0; perfInterest = 0;
+      }
+
+      // Recovery from defaults that happened (recoveryLag) months ago
+      if (age > recoveryLag) {
+        let lagAge = age - recoveryLag;
+        if (lagAge >= 1 && lagAge <= schedule.length) {
+          recovery = schedule[lagAge - 1].nplAmount * recoveryRate;
+        }
+      }
+
+      schedule.push({
+        age, portMonth, schedPayment, schedPrincipal, schedInterest, balance,
+        nplRate, cumSurvival, nplAmount, perfBalance, perfPrincipal, perfInterest, recovery
+      });
+    }
+    loanSchedules.push(schedule);
+  }
+}
+
+function calcRollup() {
+  rollupData = [];
+  // Determine max month needed
+  let maxMonth = Math.max(maxPortfolioMonth, STATE.lastActualMonth, 1);
+
+  for (let m = 1; m <= maxMonth; m++) {
+    let proj = {
+      month: m,
+      origination: 0,
+      perfBalance: 0,
+      perfPrincipal: 0,
+      perfInterest: 0,
+      newDefaults: 0,
+      recoveries: 0,
+      netCashFlow: 0,
+      cumLoss: 0
+    };
+
+    // Sum across all loan schedules for this portfolio month
+    for (let li = 0; li < loanSchedules.length; li++) {
+      let sched = loanSchedules[li];
+      let loan = STATE.loans[li];
+      if (!sched || sched.length === 0) continue;
+
+      // Origination: add loan amount in origination month
+      if (loan.origMonth === m) proj.origination += loan.amount;
+
+      // Find the schedule entry for this portfolio month
+      for (let si = 0; si < sched.length; si++) {
+        if (sched[si].portMonth === m) {
+          proj.perfBalance += sched[si].perfBalance;
+          proj.perfPrincipal += sched[si].perfPrincipal;
+          proj.perfInterest += sched[si].perfInterest;
+          proj.newDefaults += sched[si].nplAmount;
+          proj.recoveries += sched[si].recovery;
+          break;
+        }
+      }
+    }
+    proj.netCashFlow = proj.perfPrincipal + proj.perfInterest + proj.recoveries;
+
+    // Determine source
+    let isActual = m <= STATE.lastActualMonth;
+    let actual = STATE.actuals[m - 1] || {};
+
+    let row = {
+      month: m,
+      source: isActual ? 'Actual' : 'Projected',
+      // Projected values (always computed for variance)
+      projOrigination: proj.origination,
+      projPerfBalance: proj.perfBalance,
+      projPerfPrincipal: proj.perfPrincipal,
+      projPerfInterest: proj.perfInterest,
+      projNewDefaults: proj.newDefaults,
+      projRecoveries: proj.recoveries,
+      projNetCashFlow: proj.netCashFlow,
+      // Display values
+      origination: isActual ? (actual.origination || 0) : proj.origination,
+      perfBalance: isActual ? (actual.perfBalance || 0) : proj.perfBalance,
+      perfPrincipal: isActual ? (actual.principal || 0) : proj.perfPrincipal,
+      perfInterest: isActual ? (actual.interest || 0) : proj.perfInterest,
+      newDefaults: isActual ? (actual.defaults || 0) : proj.newDefaults,
+      recoveries: isActual ? (actual.recoveries || 0) : proj.recoveries,
+      netCashFlow: 0,
+      cumLoss: 0
+    };
+    row.netCashFlow = row.perfPrincipal + row.perfInterest + row.recoveries;
+
+    // Cumulative loss
+    let prevCumLoss = m > 1 && rollupData.length > 0 ? rollupData[rollupData.length - 1].cumLoss : 0;
+    row.cumLoss = prevCumLoss + row.newDefaults - row.recoveries;
+
+    rollupData.push(row);
+  }
+}
+
+// ==================== RENDER FUNCTIONS ====================
+function renderTape() {
+  let tbody = document.getElementById('tapeBody');
+  let html = '';
+  for (let i = 0; i < STATE.loans.length; i++) {
+    let l = STATE.loans[i];
+    let mr = l.annualRate / 12;
+    let pmt = PMT(mr, l.term, l.amount);
+    html += '<tr>'
+      + '<td>' + l.id + '</td>'
+      + '<td>' + l.origMonth + '</td>'
+      + '<td>' + fmtCur(l.amount) + '</td>'
+      + '<td>' + fmtPct(l.annualRate) + '</td>'
+      + '<td>' + l.term + '</td>'
+      + '<td>' + fmtPct4(mr) + '</td>'
+      + '<td>' + fmtCur(pmt) + '</td>'
+      + '<td><span class="badge ' + (l.status==='Active'?'badge-actual':'badge-alert') + '">' + l.status + '</span></td>'
+      + '<td><button class="btn btn-primary" style="padding:3px 8px;font-size:11px" onclick="editLoan('+i+')">Edit</button> '
+      + '<button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="deleteLoan('+i+')">Del</button></td>'
+      + '</tr>';
+  }
+  tbody.innerHTML = html;
+
+  // Summary
+  let totalLoans = STATE.loans.length;
+  let activeLoans = STATE.loans.filter(l => l.status === 'Active').length;
+  let totalOrig = STATE.loans.reduce((s, l) => s + l.amount, 0);
+  let wAvgRate = totalOrig > 0 ? STATE.loans.reduce((s, l) => s + l.annualRate * l.amount, 0) / totalOrig : 0;
+  let wAvgTerm = totalOrig > 0 ? STATE.loans.reduce((s, l) => s + l.term * l.amount, 0) / totalOrig : 0;
+
+  document.getElementById('tapeSummary').innerHTML =
+    '<div class="summary-card"><div class="label">Total Loans</div><div class="value">' + totalLoans + '</div></div>'
+    + '<div class="summary-card"><div class="label">Active Loans</div><div class="value">' + activeLoans + '</div></div>'
+    + '<div class="summary-card"><div class="label">Total Origination</div><div class="value">' + fmtCur(totalOrig) + '</div></div>'
+    + '<div class="summary-card"><div class="label">Wtd Avg Rate</div><div class="value">' + fmtPct(wAvgRate) + '</div></div>'
+    + '<div class="summary-card"><div class="label">Wtd Avg Term</div><div class="value">' + wAvgTerm.toFixed(0) + ' mo</div></div>';
+}
+
+function renderNPL() {
+  let tbody = document.getElementById('nplBody');
+  let html = '';
+  let cumDefault = 0;
+  for (let i = 0; i < STATE.nplCurve.length; i++) {
+    let c = STATE.nplCurve[i];
+    cumDefault = 1 - (1 - cumDefault / 100) * (1 - c.rate);
+    cumDefault = cumDefault * 100;  // wrong, let me redo
+    // Actually: cumSurvival *= (1 - rate), cumDefault = 1 - cumSurvival
+    // Compute cumSurvival properly
+    let cumSurv = 1;
+    for (let j = 0; j <= i; j++) cumSurv *= (1 - STATE.nplCurve[j].rate);
+    let cumDef = 1 - cumSurv;
+    html += '<tr>'
+      + '<td>' + c.age + '</td>'
+      + '<td><input type="number" class="npl-input user-input" step="0.001" value="' + c.rate + '" onchange="updateNPL(' + i + ', this.value)"></td>'
+      + '<td>' + fmtPct(cumDef) + '</td>'
+      + '</tr>';
+  }
+  tbody.innerHTML = html;
+}
+
+function renderSchedules() {
+  let container = document.getElementById('schedulesContainer');
+  let html = '';
+  for (let li = 0; li < STATE.loans.length; li++) {
+    let loan = STATE.loans[li];
+    let sched = loanSchedules[li];
+    if (!sched || sched.length === 0) continue;
+
+    let mr = loan.annualRate / 12;
+    let pmt = PMT(mr, loan.term, loan.amount);
+
+    html += '<div class="section" style="margin-bottom:8px;padding:12px">'
+      + '<div class="loan-expand" onclick="toggleSchedule(\'sched'+li+'\')">'
+      + '<strong>' + loan.id + '</strong> | Amount: ' + fmtCur(loan.amount) + ' | Rate: ' + fmtPct(loan.annualRate)
+      + ' | Term: ' + loan.term + 'mo | Orig Month: ' + loan.origMonth + ' | Payment: ' + fmtCur(pmt)
+      + ' <span style="color:var(--blue);font-size:12px">[click to expand]</span></div>'
+      + '<div id="sched'+li+'" style="display:none;margin-top:8px">'
+      + '<div class="table-wrap" style="max-height:400px"><table><thead><tr>'
+      + '<th>Age</th><th>Port Mo</th><th>Payment</th><th>Principal</th><th>Interest</th><th>Balance</th>'
+      + '<th>NPL Rate</th><th>Cum Survival</th><th>NPL Amt</th><th>Perf Balance</th><th>Perf Principal</th><th>Perf Interest</th><th>Recovery</th>'
+      + '</tr></thead><tbody>';
+
+    for (let si = 0; si < sched.length; si++) {
+      let s = sched[si];
+      html += '<tr>'
+        + '<td>' + s.age + '</td>'
+        + '<td>' + s.portMonth + '</td>'
+        + '<td>' + fmtCur(s.schedPayment) + '</td>'
+        + '<td>' + fmtCur(s.schedPrincipal) + '</td>'
+        + '<td>' + fmtCur(s.schedInterest) + '</td>'
+        + '<td>' + fmtCur(s.balance) + '</td>'
+        + '<td>' + fmtPct4(s.nplRate) + '</td>'
+        + '<td>' + fmtPct(s.cumSurvival) + '</td>'
+        + '<td>' + fmtCur(s.nplAmount) + '</td>'
+        + '<td>' + fmtCur(s.perfBalance) + '</td>'
+        + '<td>' + fmtCur(s.perfPrincipal) + '</td>'
+        + '<td>' + fmtCur(s.perfInterest) + '</td>'
+        + '<td>' + fmtCur(s.recovery) + '</td>'
+        + '</tr>';
+    }
+    html += '</tbody></table></div></div></div>';
+  }
+  container.innerHTML = html;
+}
+
+function renderActuals() {
+  document.getElementById('lastActualMonth').value = STATE.lastActualMonth;
+  let tbody = document.getElementById('actualsBody');
+  let maxShow = Math.max(maxPortfolioMonth, 72, STATE.lastActualMonth + 12);
+  let html = '';
+  for (let i = 0; i < Math.min(maxShow, STATE.actuals.length); i++) {
+    let a = STATE.actuals[i];
+    let m = i + 1;
+    let isActual = m <= STATE.lastActualMonth;
+    let ncf = (a.principal || 0) + (a.interest || 0) + (a.recoveries || 0);
+    html += '<tr class="' + (isActual ? 'actual-row' : '') + '">'
+      + '<td>' + m + '</td>'
+      + '<td><input type="number" class="actual-input user-input" value="' + (a.principal||'') + '" onchange="updateActual('+i+',\'principal\',this.value)"></td>'
+      + '<td><input type="number" class="actual-input user-input" value="' + (a.interest||'') + '" onchange="updateActual('+i+',\'interest\',this.value)"></td>'
+      + '<td><input type="number" class="actual-input user-input" value="' + (a.defaults||'') + '" onchange="updateActual('+i+',\'defaults\',this.value)"></td>'
+      + '<td><input type="number" class="actual-input user-input" value="' + (a.recoveries||'') + '" onchange="updateActual('+i+',\'recoveries\',this.value)"></td>'
+      + '<td>' + fmtCur(ncf) + '</td>'
+      + '<td><input type="number" class="actual-input user-input" value="' + (a.origination||'') + '" onchange="updateActual('+i+',\'origination\',this.value)"></td>'
+      + '<td><input type="number" class="actual-input user-input" value="' + (a.perfBalance||'') + '" onchange="updateActual('+i+',\'perfBalance\',this.value)"></td>'
+      + '<td><input type="text" class="notes-input" value="' + (a.notes||'') + '" onchange="updateActual('+i+',\'notes\',this.value)"></td>'
+      + '</tr>';
+  }
+  tbody.innerHTML = html;
+}
+
+function renderRollup() {
+  document.getElementById('rollupLastActual').textContent = STATE.lastActualMonth;
+  let tbody = document.getElementById('rollupBody');
+  let html = '';
+  for (let i = 0; i < rollupData.length; i++) {
+    let r = rollupData[i];
+    let isActual = r.source === 'Actual';
+    html += '<tr class="' + (isActual ? 'actual-row' : 'projected-row') + '">'
+      + '<td>' + r.month + '</td>'
+      + '<td><span class="badge ' + (isActual ? 'badge-actual' : 'badge-projected') + '">' + r.source + '</span></td>'
+      + '<td>' + fmtCur(r.origination) + '</td>'
+      + '<td>' + fmtCur(r.perfBalance) + '</td>'
+      + '<td>' + fmtCur(r.perfPrincipal) + '</td>'
+      + '<td>' + fmtCur(r.perfInterest) + '</td>'
+      + '<td>' + fmtCur(r.newDefaults) + '</td>'
+      + '<td>' + fmtCur(r.recoveries) + '</td>'
+      + '<td>' + fmtCur(r.netCashFlow) + '</td>'
+      + '<td>' + fmtCur(r.cumLoss) + '</td>'
+      + '</tr>';
+  }
+  tbody.innerHTML = html;
+  drawRollupChart();
+}
+
+function renderVariance() {
+  STATE.varianceThreshold = parseFloat(document.getElementById('varianceThreshold').value) || 0.10;
+  let tbody = document.getElementById('varianceBody');
+  let html = '';
+  let chartData = [];
+
+  for (let i = 0; i < rollupData.length; i++) {
+    let r = rollupData[i];
+    let m = r.month;
+
+    // Always show projected; show actual + variance only if has actuals
+    let hasActuals = m <= STATE.lastActualMonth;
+    let status = hasActuals ? 'Has Actuals' : 'Projected Only';
+
+    let metrics = [
+      {proj: r.projNetCashFlow, act: hasActuals ? r.netCashFlow : null},
+      {proj: r.projPerfPrincipal, act: hasActuals ? r.perfPrincipal : null},
+      {proj: r.projPerfInterest, act: hasActuals ? r.perfInterest : null},
+      {proj: r.projNewDefaults, act: hasActuals ? r.newDefaults : null},
+      {proj: r.projRecoveries, act: hasActuals ? r.recoveries : null},
+    ];
+
+    let hasAlert = false;
+    let cells = '';
+    let varPcts = [];
+    for (let mi = 0; mi < metrics.length; mi++) {
+      let p = metrics[mi].proj;
+      let a = metrics[mi].act;
+      cells += '<td style="border-left:2px solid #4a6fa5">' + fmtCur(p) + '</td>';
+      if (hasActuals) {
+        let varDollar = a - p;
+        let varPct = p !== 0 ? varDollar / Math.abs(p) : 0;
+        let cls = varDollar >= 0 ? 'var-positive' : 'var-negative';
+        // For defaults, negative variance is good (fewer defaults)
+        if (mi === 3) cls = varDollar <= 0 ? 'var-positive' : 'var-negative';
+        cells += '<td>' + fmtCur(a) + '</td>';
+        cells += '<td class="' + cls + '">' + fmtCur(varDollar) + '</td>';
+        cells += '<td class="' + cls + '">' + fmtPct(varPct) + '</td>';
+        if (Math.abs(varPct) > STATE.varianceThreshold) hasAlert = true;
+        varPcts.push(varPct);
+      } else {
+        cells += '<td>-</td><td>-</td><td>-</td>';
+        varPcts.push(0);
+      }
+    }
+
+    if (hasActuals) chartData.push({month: m, varPcts: varPcts});
+
+    let flag = '';
+    if (hasActuals) {
+      flag = hasAlert
+        ? '<span class="badge badge-alert">Alert</span>'
+        : '<span class="badge badge-ok">OK</span>';
+    }
+
+    let commentary = STATE.varianceCommentary[m] || '';
+    let commentInput = hasActuals
+      ? '<input type="text" class="notes-input" value="' + commentary.replace(/"/g,'&quot;') + '" onchange="updateVarCommentary(' + m + ',this.value)">'
+      : '';
+
+    html += '<tr class="' + (hasActuals ? 'actual-row' : '') + '">'
+      + '<td>' + m + '</td>'
+      + '<td><span class="badge ' + (hasActuals?'badge-actual':'badge-projected') + '">' + status + '</span></td>'
+      + cells
+      + '<td>' + flag + '</td>'
+      + '<td>' + commentInput + '</td>'
+      + '</tr>';
+  }
+  tbody.innerHTML = html;
+  drawVarianceChart(chartData);
+}
+
+// ==================== CHARTS ====================
+function drawRollupChart() {
+  let canvas = document.getElementById('rollupChart');
+  if (!canvas) return;
+  let ctx = canvas.getContext('2d');
+  let rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width - 32;
+  canvas.height = rect.height - 32;
+  let W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  if (rollupData.length === 0) return;
+
+  let pad = {top: 30, right: 20, bottom: 40, left: 80};
+  let cw = W - pad.left - pad.right;
+  let ch = H - pad.top - pad.bottom;
+
+  // Find max
+  let maxVal = 0;
+  for (let r of rollupData) {
+    let total = Math.abs(r.perfPrincipal) + Math.abs(r.perfInterest) + Math.abs(r.recoveries);
+    if (total > maxVal) maxVal = total;
+  }
+  if (maxVal === 0) maxVal = 1;
+
+  let n = rollupData.length;
+  let barW = Math.max(1, cw / n);
+
+  // Title
+  ctx.fillStyle = '#1a2332';
+  ctx.font = 'bold 13px Segoe UI';
+  ctx.fillText('Cash Flow Components by Month', pad.left, 18);
+
+  // Y axis
+  ctx.strokeStyle = '#ddd';
+  ctx.fillStyle = '#666';
+  ctx.font = '10px Segoe UI';
+  for (let i = 0; i <= 5; i++) {
+    let y = pad.top + ch - (i / 5) * ch;
+    let val = (i / 5) * maxVal;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    ctx.textAlign = 'right';
+    ctx.fillText('$' + (val / 1000).toFixed(0) + 'K', pad.left - 5, y + 3);
+  }
+
+  // Bars
+  let colors = ['#3498db', '#2ecc71', '#e67e22'];
+  let labels = ['Principal', 'Interest', 'Recoveries'];
+
+  for (let i = 0; i < n; i++) {
+    let r = rollupData[i];
+    let vals = [r.perfPrincipal, r.perfInterest, r.recoveries];
+    let x = pad.left + i * barW;
+    let cumH = 0;
+    for (let j = 0; j < 3; j++) {
+      let h = (vals[j] / maxVal) * ch;
+      ctx.fillStyle = colors[j];
+      ctx.fillRect(x, pad.top + ch - cumH - h, Math.max(1, barW - 1), h);
+      cumH += h;
+    }
+
+    // X labels (every 6 months)
+    if ((i + 1) % 6 === 0 || i === 0) {
+      ctx.fillStyle = '#666';
+      ctx.font = '10px Segoe UI';
+      ctx.textAlign = 'center';
+      ctx.fillText('M' + (i + 1), x + barW / 2, H - pad.bottom + 15);
+    }
+  }
+
+  // Legend
+  let lx = pad.left + 10;
+  for (let j = 0; j < 3; j++) {
+    ctx.fillStyle = colors[j];
+    ctx.fillRect(lx, pad.top + 5, 12, 12);
+    ctx.fillStyle = '#333';
+    ctx.font = '11px Segoe UI';
+    ctx.textAlign = 'left';
+    ctx.fillText(labels[j], lx + 16, pad.top + 15);
+    lx += ctx.measureText(labels[j]).width + 30;
+  }
+}
+
+function drawVarianceChart(data) {
+  let canvas = document.getElementById('varianceChart');
+  if (!canvas) return;
+  let ctx = canvas.getContext('2d');
+  let rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width - 32;
+  canvas.height = rect.height - 32;
+  let W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  if (data.length === 0) {
+    ctx.fillStyle = '#999';
+    ctx.font = '14px Segoe UI';
+    ctx.textAlign = 'center';
+    ctx.fillText('No actual data to compare. Set "Last Actual Month" > 0 on the Actuals tab.', W/2, H/2);
+    return;
+  }
+
+  let pad = {top: 30, right: 20, bottom: 40, left: 60};
+  let cw = W - pad.left - pad.right;
+  let ch = H - pad.top - pad.bottom;
+
+  let maxAbs = 0;
+  for (let d of data) for (let v of d.varPcts) if (Math.abs(v) > maxAbs) maxAbs = Math.abs(v);
+  if (maxAbs < 0.01) maxAbs = 0.1;
+  maxAbs *= 1.2;
+
+  let n = data.length;
+  let groupW = cw / n;
+  let barW = Math.max(1, groupW / 6);
+
+  let colors = ['#3498db', '#2ecc71', '#e67e22', '#e74c3c', '#9b59b6'];
+  let labels = ['NCF', 'Principal', 'Interest', 'Defaults', 'Recoveries'];
+
+  // Title
+  ctx.fillStyle = '#1a2332';
+  ctx.font = 'bold 13px Segoe UI';
+  ctx.fillText('Variance (%) by Month', pad.left, 18);
+
+  // Center line
+  let centerY = pad.top + ch / 2;
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad.left, centerY); ctx.lineTo(W - pad.right, centerY); ctx.stroke();
+  ctx.lineWidth = 1;
+
+  // Y axis
+  ctx.strokeStyle = '#eee'; ctx.fillStyle = '#666'; ctx.font = '10px Segoe UI';
+  for (let i = -4; i <= 4; i++) {
+    if (i === 0) continue;
+    let y = centerY - (i / 4) * (ch / 2);
+    let val = (i / 4) * maxAbs * 100;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    ctx.textAlign = 'right';
+    ctx.fillText(val.toFixed(0) + '%', pad.left - 5, y + 3);
+  }
+
+  // Threshold lines
+  let threshY1 = centerY - (STATE.varianceThreshold / maxAbs) * (ch / 2);
+  let threshY2 = centerY + (STATE.varianceThreshold / maxAbs) * (ch / 2);
+  ctx.strokeStyle = 'rgba(231,76,60,0.5)'; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(pad.left, threshY1); ctx.lineTo(W - pad.right, threshY1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pad.left, threshY2); ctx.lineTo(W - pad.right, threshY2); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Bars
+  for (let i = 0; i < n; i++) {
+    let d = data[i];
+    let gx = pad.left + i * groupW + 2;
+    for (let j = 0; j < 5; j++) {
+      let v = d.varPcts[j];
+      let bh = (v / maxAbs) * (ch / 2);
+      ctx.fillStyle = colors[j];
+      if (bh >= 0) {
+        ctx.fillRect(gx + j * barW, centerY - bh, Math.max(1, barW - 1), bh);
+      } else {
+        ctx.fillRect(gx + j * barW, centerY, Math.max(1, barW - 1), -bh);
+      }
+    }
+    // X label
+    ctx.fillStyle = '#666'; ctx.font = '10px Segoe UI'; ctx.textAlign = 'center';
+    ctx.fillText('M' + d.month, gx + 2.5 * barW, H - pad.bottom + 15);
+  }
+
+  // Legend
+  let lx = pad.left + 10;
+  ctx.font = '10px Segoe UI';
+  for (let j = 0; j < 5; j++) {
+    ctx.fillStyle = colors[j];
+    ctx.fillRect(lx, pad.top + 5, 10, 10);
+    ctx.fillStyle = '#333';
+    ctx.textAlign = 'left';
+    ctx.fillText(labels[j], lx + 13, pad.top + 14);
+    lx += ctx.measureText(labels[j]).width + 25;
+  }
+}
+
+// ==================== EVENT HANDLERS ====================
+function onGlobalChange() {
+  STATE.globalRecovery = parseFloat(document.getElementById('globalRecovery').value) || 0.50;
+  STATE.globalLag = parseInt(document.getElementById('globalLag').value) || 24;
+  recalcAll();
+  renderAll();
+}
+
+function onActualsChange() {
+  STATE.lastActualMonth = parseInt(document.getElementById('lastActualMonth').value) || 0;
+  recalcAll();
+  renderRollup();
+  renderVariance();
+  renderActuals();
+}
+
+function updateNPL(idx, val) {
+  STATE.nplCurve[idx].rate = parseFloat(val) || 0;
+  recalcAll();
+  renderNPL();
+  renderSchedules();
+  renderRollup();
+  renderVariance();
+}
+
+function setFlatNPL() {
+  let rate = prompt('Enter flat monthly NPL rate (e.g. 0.005 for 0.5%):','0.005');
+  if (rate === null) return;
+  rate = parseFloat(rate) || 0;
+  for (let i = 0; i < STATE.nplCurve.length; i++) STATE.nplCurve[i].rate = rate;
+  recalcAll();
+  renderNPL();
+  renderSchedules();
+  renderRollup();
+  renderVariance();
+}
+
+function updateActual(idx, field, val) {
+  if (field === 'notes') {
+    STATE.actuals[idx][field] = val;
+  } else {
+    STATE.actuals[idx][field] = parseFloat(val) || 0;
+  }
+  recalcAll();
+  renderRollup();
+  renderVariance();
+}
+
+function updateVarCommentary(month, val) {
+  STATE.varianceCommentary[month] = val;
+  saveState();
+}
+
+// ==================== LOAN CRUD ====================
+let editingLoanIdx = -1;
+
+function showAddLoan() {
+  editingLoanIdx = -1;
+  document.getElementById('modalTitle').textContent = 'Add New Loan';
+  let nextNum = STATE.nextLoanNum;
+  document.getElementById('modalLoanId').value = 'L-' + String(nextNum).padStart(4, '0');
+  document.getElementById('modalOrigMonth').value = '';
+  document.getElementById('modalAmount').value = '1000000';
+  document.getElementById('modalRate').value = '0.20';
+  document.getElementById('modalTerm').value = '60';
+  document.getElementById('modalStatus').value = 'Active';
+  document.getElementById('loanModal').classList.add('show');
+}
+
+function editLoan(idx) {
+  editingLoanIdx = idx;
+  let l = STATE.loans[idx];
+  document.getElementById('modalTitle').textContent = 'Edit Loan ' + l.id;
+  document.getElementById('modalLoanId').value = l.id;
+  document.getElementById('modalOrigMonth').value = l.origMonth;
+  document.getElementById('modalAmount').value = l.amount;
+  document.getElementById('modalRate').value = l.annualRate;
+  document.getElementById('modalTerm').value = l.term;
+  document.getElementById('modalStatus').value = l.status;
+  document.getElementById('loanModal').classList.add('show');
+}
+
+function saveLoan() {
+  let loan = {
+    id: document.getElementById('modalLoanId').value,
+    origMonth: parseInt(document.getElementById('modalOrigMonth').value) || 1,
+    amount: parseFloat(document.getElementById('modalAmount').value) || 0,
+    annualRate: parseFloat(document.getElementById('modalRate').value) || 0,
+    term: parseInt(document.getElementById('modalTerm').value) || 60,
+    status: document.getElementById('modalStatus').value
+  };
+  if (editingLoanIdx >= 0) {
+    STATE.loans[editingLoanIdx] = loan;
+  } else {
+    STATE.loans.push(loan);
+    STATE.nextLoanNum++;
+  }
+  closeLoanModal();
+  recalcAll();
+  renderAll();
+}
+
+function deleteLoan(idx) {
+  if (!confirm('Delete loan ' + STATE.loans[idx].id + '?')) return;
+  STATE.loans.splice(idx, 1);
+  recalcAll();
+  renderAll();
+}
+
+function closeLoanModal() {
+  document.getElementById('loanModal').classList.remove('show');
+}
+
+function toggleSchedule(id) {
+  let el = document.getElementById(id);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// ==================== TABS ====================
+document.getElementById('tabs').addEventListener('click', function(e) {
+  if (!e.target.classList.contains('tab')) return;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  e.target.classList.add('active');
+  let tabId = 'tab-' + e.target.dataset.tab;
+  document.getElementById(tabId).classList.add('active');
+  // Re-render active tab's chart
+  if (e.target.dataset.tab === 'rollup') setTimeout(drawRollupChart, 50);
+  if (e.target.dataset.tab === 'variance') setTimeout(function(){ renderVariance(); }, 50);
+});
+
+// ==================== CSV EXPORT ====================
+function exportCSV(type) {
+  let csv = '';
+  let filename = 'export.csv';
+
+  if (type === 'tape') {
+    filename = 'portfolio_tape.csv';
+    csv = 'Loan ID,Origination Month,Loan Amount,Annual Rate,Term,Monthly Rate,Monthly Payment,Status\n';
+    for (let l of STATE.loans) {
+      let mr = l.annualRate / 12;
+      let pmt = PMT(mr, l.term, l.amount);
+      csv += [l.id, l.origMonth, l.amount, l.annualRate, l.term, mr, pmt, l.status].join(',') + '\n';
+    }
+  } else if (type === 'npl') {
+    filename = 'npl_curve.csv';
+    csv = 'Loan Age,Monthly NPL Rate\n';
+    for (let c of STATE.nplCurve) csv += c.age + ',' + c.rate + '\n';
+  } else if (type === 'schedules') {
+    filename = 'loan_schedules.csv';
+    csv = 'Loan ID,Age,Portfolio Month,Payment,Principal,Interest,Balance,NPL Rate,Cum Survival,NPL Amount,Perf Balance,Perf Principal,Perf Interest,Recovery\n';
+    for (let li = 0; li < STATE.loans.length; li++) {
+      let sched = loanSchedules[li];
+      if (!sched) continue;
+      for (let s of sched) {
+        csv += [STATE.loans[li].id, s.age, s.portMonth, s.schedPayment, s.schedPrincipal, s.schedInterest, s.balance, s.nplRate, s.cumSurvival, s.nplAmount, s.perfBalance, s.perfPrincipal, s.perfInterest, s.recovery].join(',') + '\n';
+      }
+    }
+  } else if (type === 'actuals') {
+    filename = 'actuals.csv';
+    csv = 'Month,Principal,Interest,Defaults,Recoveries,Net Cash Flow,Origination,Perf Balance,Notes\n';
+    for (let a of STATE.actuals) {
+      let ncf = (a.principal||0)+(a.interest||0)+(a.recoveries||0);
+      csv += [a.month, a.principal, a.interest, a.defaults, a.recoveries, ncf, a.origination, a.perfBalance, '"'+(a.notes||'')+'"'].join(',') + '\n';
+    }
+  } else if (type === 'rollup') {
+    filename = 'portfolio_rollup.csv';
+    csv = 'Month,Source,Origination,Perf Balance,Perf Principal,Perf Interest,New Defaults,Recoveries,Net Cash Flow,Cumulative Loss\n';
+    for (let r of rollupData) {
+      csv += [r.month, r.source, r.origination, r.perfBalance, r.perfPrincipal, r.perfInterest, r.newDefaults, r.recoveries, r.netCashFlow, r.cumLoss].join(',') + '\n';
+    }
+  } else if (type === 'variance') {
+    filename = 'variance_analysis.csv';
+    csv = 'Month,Status,NCF Proj,NCF Act,NCF Var$,NCF Var%,Prin Proj,Prin Act,Prin Var$,Prin Var%,Int Proj,Int Act,Int Var$,Int Var%,Def Proj,Def Act,Def Var$,Def Var%,Rec Proj,Rec Act,Rec Var$,Rec Var%,Commentary\n';
+    for (let r of rollupData) {
+      let m = r.month;
+      let hasAct = m <= STATE.lastActualMonth;
+      let metrics = [
+        [r.projNetCashFlow, hasAct ? r.netCashFlow : ''],
+        [r.projPerfPrincipal, hasAct ? r.perfPrincipal : ''],
+        [r.projPerfInterest, hasAct ? r.perfInterest : ''],
+        [r.projNewDefaults, hasAct ? r.newDefaults : ''],
+        [r.projRecoveries, hasAct ? r.recoveries : '']
+      ];
+      let row = [m, hasAct ? 'Has Actuals' : 'Projected Only'];
+      for (let [p, a] of metrics) {
+        row.push(p);
+        row.push(a);
+        if (hasAct && a !== '') {
+          row.push(a - p);
+          row.push(p !== 0 ? ((a - p) / Math.abs(p)) : 0);
+        } else {
+          row.push('');
+          row.push('');
+        }
+      }
+      row.push('"'+(STATE.varianceCommentary[m]||'')+'"');
+      csv += row.join(',') + '\n';
+    }
+  }
+
+  let blob = new Blob([csv], {type: 'text/csv'});
+  let a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+function exportAllCSV() {
+  ['tape','npl','schedules','actuals','rollup','variance'].forEach(t => exportCSV(t));
+}
+
+function resetToDefaults() {
+  if (!confirm('Reset all data to the default 12-loan portfolio? This will erase any changes.')) return;
+  localStorage.removeItem('leasePortfolioModel');
+  STATE.globalRecovery = 0.50;
+  STATE.globalLag = 24;
+  STATE.loans = getDefaultLoans();
+  STATE.nplCurve = getDefaultNPL();
+  STATE.actuals = getDefaultActuals();
+  STATE.lastActualMonth = 0;
+  STATE.varianceThreshold = 0.10;
+  STATE.varianceCommentary = {};
+  STATE.nextLoanNum = 13;
+  document.getElementById('globalRecovery').value = 0.50;
+  document.getElementById('globalLag').value = 24;
+  document.getElementById('varianceThreshold').value = 0.10;
+  recalcAll();
+  renderAll();
+}
+
+// ==================== RENDER ALL ====================
+function renderAll() {
+  renderTape();
+  renderNPL();
+  renderSchedules();
+  renderActuals();
+  renderRollup();
+  renderVariance();
+  document.getElementById('statusText').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+}
+
+// ==================== INIT ====================
+loadState();
+document.getElementById('globalRecovery').value = STATE.globalRecovery;
+document.getElementById('globalLag').value = STATE.globalLag;
+document.getElementById('varianceThreshold').value = STATE.varianceThreshold;
+document.getElementById('lastActualMonth').value = STATE.lastActualMonth;
+recalcAll();
+renderAll();
+</script>
+</body>
+</html>
